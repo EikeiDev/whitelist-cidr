@@ -1,0 +1,56 @@
+name: Resolve DNS Whitelist
+
+on:
+  # 1. Запуск вручную (кнопка "Run workflow" в разделе Actions)
+  workflow_dispatch:
+
+  # 2. Запуск по расписанию (каждый час)
+  schedule:
+    - cron: "0 */1 * * *"
+
+  # 3. Запуск при обновлении списка доменов
+  push:
+    paths:
+      - "data/domains.txt"
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    steps:
+      # Шаг 1: Загружаем код из репозитория
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
+        # Указываем, что нужно загрузить всю историю,
+        # чтобы скрипт мог прочитать существующий ipv4.txt
+        with:
+          fetch-depth: 0
+
+      # Шаг 2: Устанавливаем Python
+      - name: 2. Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip" # Кэшируем зависимости
+
+      # Шаг 3: Устанавливаем зависимости
+      - name: 3. Install Dependencies
+        run: pip install -r requirements.txt
+
+      # Шаг 4: Запускаем наш скрипт
+      - name: 4. Run DNS Resolution Script
+        run: python resolve_ru_parallel.py
+
+      # Шаг 5: Коммитим изменения обратно в репозиторий
+      - name: 5. Commit and Push Changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          # Файлы, которые нужно добавить.
+          # Если изменений не будет, коммит не создастся.
+          add: "data/ipv4.txt data/cidr.txt"
+
+          # Автор коммита
+          author_name: "GitHub Actions Bot"
+          author_email: "github-actions[bot]@users.noreply.github.com"
+
+          # Сообщение коммита
+          message: "🤖 [Bot] Update DNS whitelist"
